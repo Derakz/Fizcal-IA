@@ -1,0 +1,453 @@
+:root {
+  --primary: #1e3a8a;
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #1f2937;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-header {
+  background: var(--primary);
+  color: white;
+  padding: 1.5rem;
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.container {
+  padding: 1rem;
+  max-width: 900px;
+  margin: auto;
+}
+
+.card {
+  background: var(--card);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 0.8rem;
+  margin-top: 0.5rem;
+  resize: vertical;
+}
+
+button {
+  margin-top: 0.8rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.tools {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.output {
+  white-space: pre-wrap;
+  background: #f0f2f7;
+  padding: 1rem;
+  border-radius: 6px;
+  min-height: 120px;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 1rem;
+  opacity: 0.6;
+}
+/* ===============================
+   HISTORIAL - INTERACTIVIDAD
+   =============================== */
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-list li {
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background-color: #f7f9fc;
+  cursor: pointer; /* 👈 manito */
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.history-list li:hover {
+  background-color: #eaf0ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.history-list li:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.history-list li strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #1f3c88;
+}
+
+.history-list li small {
+  color: #666;
+  font-size: 12px;
+}
+
+.history-list li p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #444;
+}
+
+.history-list li.empty {
+  cursor: default;
+  background: none;
+  box-shadow: none;
+  color: #999;
+}
+/* ===============================
+   BOTÓN BORRAR HISTORIAL
+   =============================== */
+
+.danger-btn {
+  background-color: #ffe5e5;
+  color: #a10000;
+  border: 1px solid #ffb3b3;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.danger-btn:hover {
+  background-color: #ffcccc;
+}
+/* ===============================
+   HISTORIAL - BORRAR ITEM
+   =============================== */
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.delete-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.delete-item:hover {
+  opacity: 1;
+}
+/* ===============================
+   FAVORITOS - HISTORIAL (MEJORADO)
+   =============================== */
+
+.history-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ⭐ Estrella */
+.favorite-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;              /* más grande */
+  color: #d4a017;               /* dorado visible */
+  opacity: 0.6;                 /* visible aun sin marcar */
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.favorite-item:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* ⭐ Cuando está marcada */
+.history-list li.favorito .favorite-item {
+  opacity: 1;
+}
+
+/* Item favorito resaltado */
+.history-list li.favorito {
+  border-left: 4px solid #f5c518;
+  background-color: #fff9db;
+}
+/* ===============================
+   FILTRO FAVORITOS
+   =============================== */
+
+.filter-btn {
+  background-color: #fff3bf;
+  border: 1px solid #f5c518;
+  color: #7a5c00;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.filter-btn.active {
+  background-color: #f5c518;
+  color: #000;
+}
+/* ===============================
+   PDF UPLOAD ESTILIZADO
+   =============================== */
+
+.pdf-upload {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pdf-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.pdf-button {
+  background-color: #1e3a8a;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.pdf-button:hover {
+  background-color: #1e40af;
+}
+
+.pdf-filename {
+  font-size: 13px;
+  color: #555;
+}
+/* ===============================
+   HEADER MEJORADO
+   =============================== */
+
+.app-header {
+  background-color: #1e3a8a;
+  color: #fff;
+  padding: 28px 20px;
+}
+
+.header-content {
+  max-width: 900px;
+  margin: auto;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin: 4px 0;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+.tagline {
+  margin-top: 10px;
+  font-size: 14px;
+  opacity: 0.85;
+  max-width: 600px;
+}
+/* ===============================
+   HEADER FLEX
+   =============================== */
+
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* ===============================
+   TOGGLE TEMA
+   =============================== */
+
+.theme-toggle {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 20px;
+  padding: 6px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.theme-toggle:hover {
+  background: rgba(255,255,255,0.25);
+  transform: scale(1.05);
+}
+/* ===============================
+   TEMA OSCURO
+   =============================== */
+
+body[data-theme="dark"] {
+  background-color: #0f172a;
+  color: #e5e7eb;
+}
+
+body[data-theme="dark"] .card {
+  background-color: #020617;
+  border-color: #1e293b;
+}
+
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] pre,
+body[data-theme="dark"] input[type="text"] {
+  background-color: #020617;
+  color: #e5e7eb;
+  border-color: #334155;
+}
+
+body[data-theme="dark"] .output {
+  background-color: #020617;
+}
+
+body[data-theme="dark"] .history-list li {
+  background-color: #020617;
+  border-color: #1e293b;
+}
+
+body[data-theme="dark"] .history-list li.favorito {
+  background-color: #1e293b;
+  border-left-color: #f5c518;
+}
+
+body[data-theme="dark"] .danger-btn {
+  background-color: #7f1d1d;
+}
+
+body[data-theme="dark"] .filter-btn {
+  background-color: #1e293b;
+  color: #e5e7eb;
+  border-color: #475569;
+}
+/* ===============================
+   DARK MODE – HISTORIAL VISIBILIDAD
+   =============================== */
+
+/* Tarjetas */
+body[data-theme="dark"] .card {
+  background-color: #020617;
+  color: #e5e7eb;
+}
+
+/* Items del historial */
+body[data-theme="dark"] .history-list li {
+  background-color: #020617;
+  border: 1px solid #1e293b;
+  color: #e5e7eb;
+}
+
+/* TÍTULO DE CADA ITEM (Hechos, Tipicidad, etc.) */
+body[data-theme="dark"] .history-list li strong {
+  color: #93c5fd; /* azul claro visible */
+}
+
+/* Fecha */
+body[data-theme="dark"] .history-list li small {
+  color: #94a3b8;
+}
+
+/* Texto preview */
+body[data-theme="dark"] .history-list li p {
+  color: #cbd5f5;
+}
+
+/* ⭐ Favorito */
+body[data-theme="dark"] .favorite-item {
+  color: #facc15;
+  opacity: 0.9;
+}
+
+/* 🗑️ Eliminar */
+body[data-theme="dark"] .delete-item {
+  color: #f87171;
+  opacity: 0.85;
+}
+
+/* Hover */
+body[data-theme="dark"] .favorite-item:hover,
+body[data-theme="dark"] .delete-item:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Item favorito resaltado */
+body[data-theme="dark"] .history-list li.favorito {
+  background-color: #020617;
+  border-left: 4px solid #facc15;
+}
+
+/* Título del bloque Historial */
+body[data-theme="dark"] h2 {
+  color: #f8fafc;
+}
+/* ===============================
+   DARK MODE – BOTÓN BORRAR TODO
+   =============================== */
+
+body[data-theme="dark"] .danger-btn {
+  background-color: #3f1d1d;      /* rojo oscuro sobrio */
+  color: #fecaca;                 /* texto rojo claro */
+  border: 1px solid #7f1d1d;
+  box-shadow: none;
+}
+
+body[data-theme="dark"] .danger-btn:hover {
+  background-color: #7f1d1d;      /* solo al hover se intensifica */
+  color: #fff;
+}

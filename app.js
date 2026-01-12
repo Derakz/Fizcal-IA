@@ -238,13 +238,20 @@ async function consultarIA(tipo) {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        input: prompt
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt }
+            ]
+          }
+        ]
       })
     });
 
     const data = await response.json();
 
-    // 🔴 MANEJO DE ERROR REAL
+    // 🚨 Manejo de error real
     if (!response.ok) {
       console.error("OpenAI error:", data);
       output.textContent =
@@ -253,14 +260,14 @@ async function consultarIA(tipo) {
       return;
     }
 
-    // ✅ LECTURA CORRECTA DE RESPUESTA
+    // ✅ Extracción segura del texto
     const resultado =
       data.output_text ||
       data.output?.[0]?.content?.[0]?.text;
 
     if (!resultado) {
       console.error("Respuesta inesperada:", data);
-      output.textContent = "❌ Respuesta vacía de la IA.";
+      output.textContent = "❌ La IA no devolvió texto.";
       return;
     }
 

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Fizcal IA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -18,32 +19,32 @@
         Redacción de hechos, tipicidad, diligencias y providencias fiscales.
       </p>
     </div>
+
     <button id="themeToggle" class="theme-toggle">🌙</button>
   </div>
 </header>
 
 <main class="container">
 
+  <!-- ENTRADA -->
   <section class="card">
     <h2>Entrada del caso / escrito</h2>
 
     <textarea
       id="caseInput"
       rows="10"
-      placeholder="Pegue aquí el caso fiscal, escrito o cargue un PDF..."
+      placeholder="Ingrese el relato de los hechos, escrito recibido o información relevante para el análisis fiscal…"
     ></textarea>
 
-    <div class="pdf-upload">
-      <label class="pdf-label">📄 Documento:</label>
-      <label class="pdf-button">
-        Subir PDF
-        <input type="file" id="pdfInput" accept="application/pdf" hidden />
-      </label>
+    <div class="file-row">
+      <input type="file" id="pdfInput" accept="application/pdf" />
     </div>
   </section>
 
+  <!-- HERRAMIENTAS -->
   <section class="card">
     <h2>Herramientas</h2>
+
     <div class="button-group">
       <button id="btnHechos" class="tool-btn">Hechos</button>
       <button id="btnTipicidad" class="tool-btn">Tipicidad</button>
@@ -52,35 +53,49 @@
     </div>
   </section>
 
+  <!-- SALIDA -->
   <section class="card">
     <h2>Resultado</h2>
     <pre id="output" class="output"></pre>
-    <div id="sourcesBox" class="sources-box" style="display:none;">
-      <h3>📚 Fuentes normativas utilizadas</h3>
-      <ul id="sourcesList"></ul>
-    </div>
 
+    <div id="loadingIndicator" class="loading hidden">
+      ⏳ Analizando el caso…
+    </div>
   </section>
 
+  <!-- HISTORIAL -->
   <section class="card">
     <h2 style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Historial (<span id="historyCount">0</span> ⭐)</span>
+      <span>
+        Historial (<span id="historyCount">0</span> ⭐)
+      </span>
+
       <div>
         <button id="filterFavoritesBtn" class="filter-btn">⭐ Favoritos</button>
         <button id="clearHistoryBtn" class="danger-btn">🗑️ Borrar todo</button>
       </div>
     </h2>
 
-    <ul id="historyList" class="history-list"></ul>
+    <ul id="historyList" class="history-list">
+      <li class="empty">No hay consultas guardadas.</li>
+    </ul>
   </section>
 
 </main>
 
 <footer class="app-footer">
-  <small>Herramienta de apoyo. No reemplaza el criterio fiscal. Todos los derechos reservados. Creado por Jhonathan Anthony Andres Barba con tecnología de OpenAI.</small>
+  <small>
+    Herramienta de apoyo a la labor fiscal.
+    No sustituye el criterio del Fiscal.
+    Todos los derechos reservados. 2026.
+    Creado por ChatGPT-4 y desarrollado por Jhonathan Anthony Andres Barba.
+  </small>
 </footer>
 
+<!-- PDF.JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- APP -->
 <script src="app.js"></script>
 
 </body>

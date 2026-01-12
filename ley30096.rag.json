@@ -1,0 +1,23 @@
+{
+  "norma": "Ley 30096 – Delitos Informáticos",
+  "articulos": [
+    {
+      "numero": 2,
+      "codigo": "2",
+      "titulo": "Acceso ilícito",
+      "texto": "El que deliberada e ilegítimamente accede a todo o en parte de un sistema informático, o se excede en lo autorizado, será reprimido con pena privativa de libertad no menor de uno ni mayor de cuatro años..."
+    },
+    {
+      "numero": 8,
+      "codigo": "8",
+      "titulo": "Fraude informático",
+      "texto": "El que deliberada e ilegítimamente procura para sí o para otro un provecho ilícito en perjuicio de tercero mediante el diseño, introducción, alteración, borrado, supresión, clonación de datos informáticos, suplantación de interfaces o páginas web..."
+    },
+    {
+      "numero": 9,
+      "codigo": "9",
+      "titulo": "Suplantación de identidad",
+      "texto": "El que, mediante las tecnologías digitales suplanta la identidad de una persona natural o jurídica, siempre que de dicha conducta resulte algún perjuicio, material, moral o de cualquier otra índole..."
+    }
+  ]
+}

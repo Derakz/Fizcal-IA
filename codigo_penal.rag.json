@@ -1,0 +1,17 @@
+{
+  "norma": "Código Penal Peruano",
+  "articulos": [
+    {
+      "numero": 185,
+      "codigo": "185",
+      "titulo": "Hurto",
+      "texto": "El que, para obtener provecho, se apodera ilegítimamente de un bien mueble total o parcialmente ajeno..."
+    },
+    {
+      "numero": 196,
+      "codigo": "196",
+      "titulo": "Estafa",
+      "texto": "El que procura para sí o para otro un provecho ilícito en perjuicio de tercero induciendo o manteniendo en error al agraviado mediante engaño, ardid u otra forma fraudulenta..."
+    }
+  ]
+}

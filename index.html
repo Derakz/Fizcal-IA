@@ -2,11 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fizcal IA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+
+<body data-theme="light">
 
 <header class="app-header">
   <div class="header-content header-flex">
@@ -14,77 +16,61 @@
       <h1>Fizcal IA</h1>
       <p class="subtitle">Asistente de despacho fiscal</p>
       <p class="tagline">
-        Redacción rápida de hechos, tipicidad, diligencias y providencias fiscales.
+        Redacción de hechos, tipicidad, diligencias y providencias fiscales.
       </p>
     </div>
 
-    <!-- 🌙 SWITCH TEMA -->
-    <button id="themeToggle" class="theme-toggle" title="Cambiar tema">
-      🌙
-    </button>
+    <button id="themeToggle" class="theme-toggle">🌙</button>
   </div>
 </header>
 
 <main class="container">
 
-  <!-- CASO -->
+  <!-- ENTRADA -->
   <section class="card">
-    <h2>1. Caso o escrito</h2>
+    <h2>Entrada del caso / escrito</h2>
 
-    <textarea id="caseInput"
-      placeholder="Pega aquí el caso fiscal, escrito u oficio">
-    </textarea>
+    <textarea
+      id="caseInput"
+      rows="10"
+      placeholder="Pegue aquí el caso fiscal, escrito o cargue un PDF..."
+    ></textarea>
 
-    <button id="loadCaseBtn">Cargar texto</button>
-
-    <div style="margin-top:10px;">
-      <div class="pdf-upload">
-  <span class="pdf-label">O cargar desde PDF:</span>
-
-  <label class="pdf-button">
-    📄 Cargar PDF
-    <input type="file" id="pdfInput" accept="application/pdf" hidden />
-  </label>
-
-  <span id="pdfFileName" class="pdf-filename">
-    Ningún archivo seleccionado
-  </span>
-</div>
+    <div class="file-row">
+      <input type="file" id="pdfInput" accept="application/pdf" />
     </div>
   </section>
 
   <!-- HERRAMIENTAS -->
-  <section class="card disabled" id="toolsSection">
-    <h2>2. Herramientas</h2>
-    <div class="tools">
-      <button data-action="hechos">Hechos</button>
-      <button data-action="tipicidad">Tipicidad</button>
-      <button data-action="diligencias">Diligencias</button>
-      <button data-action="proveer">Proveer – Téngase Presente</button>
+  <section class="card">
+    <h2>Herramientas</h2>
+
+    <div class="button-group">
+      <button id="btnHechos" class="tool-btn">Hechos</button>
+      <button id="btnTipicidad" class="tool-btn">Tipicidad</button>
+      <button id="btnDiligencias" class="tool-btn">Diligencias</button>
+      <button id="btnProveer" class="tool-btn">Proveer – Téngase Presente</button>
     </div>
   </section>
 
-  <!-- RESULTADO -->
+  <!-- SALIDA -->
   <section class="card">
     <h2>Resultado</h2>
-    <pre id="output" class="output">
-Aquí aparecerá el resultado…
-    </pre>
+    <pre id="output" class="output"></pre>
   </section>
 
   <!-- HISTORIAL -->
   <section class="card">
-   <h2 style="display:flex; justify-content:space-between; align-items:center;">
-    <span>
-    Historial de consultas (<span id="historyCount">0</span> ⭐)
-    </span>
+    <h2 style="display:flex; justify-content:space-between; align-items:center;">
+      <span>
+        Historial (<span id="historyCount">0</span> ⭐)
+      </span>
 
-    <div>
-    <button id="filterFavoritesBtn" class="filter-btn">⭐ Favoritos</button>
-    <button id="clearHistoryBtn" class="danger-btn">🗑️ Borrar todo</button>
-    </div>
-  </h2>
-
+      <div>
+        <button id="filterFavoritesBtn" class="filter-btn">⭐ Favoritos</button>
+        <button id="clearHistoryBtn" class="danger-btn">🗑️ Borrar todo</button>
+      </div>
+    </h2>
 
     <ul id="historyList" class="history-list">
       <li class="empty">No hay consultas guardadas.</li>
@@ -94,10 +80,12 @@ Aquí aparecerá el resultado…
 </main>
 
 <footer class="app-footer">
-  <small>Herramienta de apoyo. No reemplaza el criterio fiscal. Todos los derechos reservados - Creado por Jhonathan Anthony Andres Barba con la tecnología de OpenAI</small>
+  <small>
+    Herramienta de apoyo. No reemplaza el criterio fiscal.
+  </small>
 </footer>
 
-<!-- PDF.JS (DEBE IR ANTES DE app.js) -->
+<!-- PDF.JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <!-- APP -->

@@ -1,15 +1,17 @@
 /*************************************************
- * CONFIGURACIÓN GENERAL
+ * CONFIGURACIÓN
  *************************************************/
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const HISTORIAL_KEY = "transactions";
 
+/*************************************************
+ * ELEMENTOS
+ *************************************************/
+
 const inputText = document.getElementById("caseInput");
 const output = document.getElementById("output");
 const historyList = document.getElementById("historyList");
-const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-const favoritesBtn = document.getElementById("filterFavoritesBtn");
 const pdfInput = document.getElementById("pdfInput");
 
 /*************************************************
@@ -26,7 +28,7 @@ if (!OPENAI_API_KEY) {
 }
 
 /*************************************************
- * HISTORIAL (UNA SOLA FUENTE DE VERDAD)
+ * HISTORIAL
  *************************************************/
 
 function obtenerHistorial() {
@@ -39,14 +41,14 @@ function guardarEnHistorial(item) {
   localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
 }
 
-function eliminarItemHistorial(id) {
+function eliminarItem(id) {
   const historial = obtenerHistorial().filter(i => i.id !== id);
   localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
   renderizarHistorial();
 }
 
 function borrarTodoHistorial() {
-  if (!confirm("¿Deseas borrar todo el historial? Esta acción no se puede deshacer.")) return;
+  if (!confirm("¿Borrar todo el historial? Esta acción no se puede deshacer.")) return;
   localStorage.removeItem(HISTORIAL_KEY);
   renderizarHistorial();
 }
@@ -55,11 +57,11 @@ function borrarTodoHistorial() {
  * RENDER HISTORIAL
  *************************************************/
 
-function renderizarHistorial(filtrarFavoritos = false) {
+function renderizarHistorial(soloFavoritos = false) {
   const historial = obtenerHistorial();
   historyList.innerHTML = "";
 
-  const items = filtrarFavoritos
+  const items = soloFavoritos
     ? historial.filter(i => i.favorite)
     : historial;
 
@@ -76,7 +78,7 @@ function renderizarHistorial(filtrarFavoritos = false) {
     li.innerHTML = `
       <div class="history-header">
         <strong>${item.tipo}</strong>
-        <div class="history-actions">
+        <div>
           <span class="favorite-item">${item.favorite ? "⭐" : "☆"}</span>
           <span class="delete-item">🗑️</span>
         </div>
@@ -85,23 +87,20 @@ function renderizarHistorial(filtrarFavoritos = false) {
       <p>${item.preview}</p>
     `;
 
-    // Restaurar resultado
     li.addEventListener("click", () => {
       output.textContent = item.output;
     });
 
-    // Favorito
     li.querySelector(".favorite-item").addEventListener("click", e => {
       e.stopPropagation();
       item.favorite = !item.favorite;
       localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
-      renderizarHistorial(filtrarFavoritos);
+      renderizarHistorial(soloFavoritos);
     });
 
-    // Eliminar
     li.querySelector(".delete-item").addEventListener("click", e => {
       e.stopPropagation();
-      eliminarItemHistorial(item.id);
+      eliminarItem(item.id);
     });
 
     historyList.appendChild(li);
@@ -111,95 +110,78 @@ function renderizarHistorial(filtrarFavoritos = false) {
 }
 
 function actualizarContador() {
+  const el = document.getElementById("historyCount");
+  if (!el) return;
   const total = obtenerHistorial().filter(i => i.favorite).length;
-  document.getElementById("historyCount").textContent = total;
+  el.textContent = total;
 }
 
 /*************************************************
- * PROMPTS (VERSIÓN ESTABLE Y JURÍDICA)
+ * PROMPTS
  *************************************************/
 
 function construirPrompt(tipo, texto) {
   const base = `
-Actúa como un fiscal penal peruano.
-Redacta con lenguaje técnico, sobrio y objetivo.
+Actúa como fiscal penal peruano.
+Lenguaje técnico, sobrio y objetivo.
 No inventes hechos ni datos.
-No emitas juicios de responsabilidad definitiva.
-No reemplazas el criterio fiscal.
+No emitas juicios definitivos.
 `;
 
   if (tipo === "Hechos") {
-    return `
-${base}
-Redacta el apartado HECHOS de una disposición fiscal,
-en forma cronológica, numerada y objetiva,
-a partir del siguiente caso:
+    return `${base}
+Redacta el apartado HECHOS, cronológico y numerado:
 
-${texto}
-`;
+${texto}`;
   }
 
   if (tipo === "Tipicidad") {
-    return `
-${base}
+    return `${base}
 Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR,
-citando expresamente artículos del Código Penal peruano
-y/o Ley 30096 si corresponde.
-Usa estructura: Consideraciones y Conclusión.
+citando Código Penal y/o Ley 30096.
 
 Caso:
-${texto}
-`;
+${texto}`;
   }
 
   if (tipo === "Diligencias") {
-    return `
-${base}
-Propón DILIGENCIAS PRELIMINARES razonables,
-proporcionales y útiles,
-numeradas y redactadas en lenguaje fiscal.
+    return `${base}
+Propón DILIGENCIAS PRELIMINARES numeradas y razonables.
 
 Caso:
-${texto}
-`;
+${texto}`;
   }
 
   if (tipo === "Proveer") {
-    return `
-${base}
-Redacta una PROVIDENCIA FISCAL simple
-con la siguiente estructura exacta:
+    return `${base}
+Redacta una PROVIDENCIA FISCAL con esta estructura exacta:
 
 DADO CUENTA:
 El escrito que antecede;
 
 CONSIDERANDO:
-(Una sola consideración breve y formal)
+(una consideración breve)
 
 SE PROVEE:
 Téngase presente lo informado y agréguese a los actuados.
 
-No inventes datos.
-Caso / escrito:
-${texto}
-`;
+Texto:
+${texto}`;
   }
 }
 
 /*************************************************
- * LLAMADA A OPENAI
+ * OPENAI
  *************************************************/
 
 async function consultarIA(tipo) {
   const texto = inputText.value.trim();
   if (!texto) {
-    alert("Ingrese un caso o escrito.");
+    alert("Ingrese texto o cargue un PDF.");
     return;
   }
 
   output.textContent = "Procesando...";
-
-  const prompt = construirPrompt(tipo, texto);
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -210,7 +192,7 @@ async function consultarIA(tipo) {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: construirPrompt(tipo, texto) }],
         temperature: 0.2
       })
     });
@@ -220,26 +202,25 @@ async function consultarIA(tipo) {
 
     output.textContent = resultado;
 
-    const item = {
+    guardarEnHistorial({
       id: Date.now(),
       tipo,
       fecha: new Date().toLocaleString(),
       preview: resultado.slice(0, 120) + "...",
       output: resultado,
       favorite: false
-    };
+    });
 
-    guardarEnHistorial(item);
     renderizarHistorial();
 
-  } catch (err) {
+  } catch (e) {
     output.textContent = "Error al consultar la IA.";
-    console.error(err);
+    console.error(e);
   }
 }
 
 /*************************************************
- * EVENTOS
+ * SAFE BIND
  *************************************************/
 
 function safeBind(id, handler) {
@@ -247,29 +228,51 @@ function safeBind(id, handler) {
   if (el) el.addEventListener("click", handler);
 }
 
-// Botones de herramientas
 safeBind("btnHechos", () => consultarIA("Hechos"));
 safeBind("btnTipicidad", () => consultarIA("Tipicidad"));
 safeBind("btnDiligencias", () => consultarIA("Diligencias"));
 safeBind("btnProveer", () => consultarIA("Proveer"));
 
-// Historial
 safeBind("clearHistoryBtn", borrarTodoHistorial);
 safeBind("filterFavoritesBtn", () => renderizarHistorial(true));
 
 /*************************************************
- * PDF (LIGERO)
+ * PDF.JS
  *************************************************/
 
 pdfInput.addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    inputText.value = reader.result.slice(0, 8000);
-  };
-  reader.readAsText(file);
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  let texto = "";
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    texto += content.items.map(i => i.str).join(" ") + "\n\n";
+  }
+
+  inputText.value = texto.slice(0, 8000);
+});
+
+/*************************************************
+ * TEMA OSCURO
+ *************************************************/
+
+const themeToggle = document.getElementById("themeToggle");
+const savedTheme = localStorage.getItem("theme") || "light";
+document.body.setAttribute("data-theme", savedTheme);
+themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+themeToggle.addEventListener("click", () => {
+  const newTheme =
+    document.body.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", newTheme);
+  localStorage.setItem("theme", newTheme);
+  themeToggle.textContent = newTheme === "dark" ? "☀️" : "🌙";
 });
 
 /*************************************************

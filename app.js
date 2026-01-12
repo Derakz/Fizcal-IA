@@ -1,3 +1,29 @@
+/**************************************
+ * API KEY – DEMO LOCAL (FRONTEND)
+ **************************************/
+function obtenerApiKey() {
+  let key = localStorage.getItem("openai_api_key");
+
+  if (!key) {
+    key = prompt(
+      "🔐 Ingresa tu API Key de OpenAI\n\n" +
+      "• Se guardará solo en este navegador\n" +
+      "• Puedes borrarla desde el DevTools\n" +
+      "• Usa una key de DEMO"
+    );
+
+    if (!key || !key.trim()) {
+      alert("⚠️ No se ingresó una API Key. La app no podrá funcionar.");
+      return null;
+    }
+
+    localStorage.setItem("openai_api_key", key.trim());
+  }
+
+  return key;
+}
+
+const OPENAI_API_KEY = obtenerApiKey();
 /*************************************************
  * CONFIGURACIÓN GENERAL
  *************************************************/

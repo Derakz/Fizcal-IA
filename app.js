@@ -229,7 +229,7 @@ async function consultarIA(tipo) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("openai_key")}`
+        "Authorization": `Bearer ${localStorage.getItem("openai_api_key")}`
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,

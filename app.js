@@ -242,10 +242,20 @@ async function consultarIA(tipo) {
  * EVENTOS
  *************************************************/
 
-document.getElementById("btnHechos").onclick = () => consultarIA("Hechos");
-document.getElementById("btnTipicidad").onclick = () => consultarIA("Tipicidad");
-document.getElementById("btnDiligencias").onclick = () => consultarIA("Diligencias");
-document.getElementById("btnProveer").onclick = () => consultarIA("Proveer");
+function safeBind(id, handler) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener("click", handler);
+}
+
+// Botones principales
+safeBind("btnHechos", () => consultarIA("Hechos"));
+safeBind("btnTipicidad", () => consultarIA("Tipicidad"));
+safeBind("btnDiligencias", () => consultarIA("Diligencias"));
+safeBind("btnProveer", () => consultarIA("Proveer"));
+
+// Historial
+safeBind("clearHistoryBtn", borrarTodoHistorial);
+safeBind("filterFavoritesBtn", () => renderizarHistorial(true));
 
 clearHistoryBtn.onclick = borrarTodoHistorial;
 

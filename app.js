@@ -1,8 +1,21 @@
-// ======================================
-// ASISTENTE PENAL IA - APP.JS
-// ======================================
+/*************************************************
+ * CONFIGURACIÓN GENERAL
+ *************************************************/
 
-// ---------- OPENAI ----------
+const OPENAI_MODEL = "gpt-4.1-mini";
+const HISTORIAL_KEY = "transactions";
+
+const inputText = document.getElementById("caseInput");
+const output = document.getElementById("output");
+const historyList = document.getElementById("historyList");
+const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+const favoritesBtn = document.getElementById("filterFavoritesBtn");
+const pdfInput = document.getElementById("pdfInput");
+
+/*************************************************
+ * API KEY
+ *************************************************/
+
 let OPENAI_API_KEY = localStorage.getItem("openai_key");
 
 if (!OPENAI_API_KEY) {
@@ -12,256 +25,249 @@ if (!OPENAI_API_KEY) {
   }
 }
 
-// ---------- DOM ----------
-const caseInput = document.getElementById("caseInput");
-const loadCaseBtn = document.getElementById("loadCaseBtn");
-const toolsSection = document.getElementById("toolsSection");
-const output = document.getElementById("output");
-
-const historyList = document.getElementById("historyList");
-const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-const filterFavBtn = document.getElementById("filterFavBtn");
-const favCount = document.getElementById("favCount");
-
-const pdfInput = document.getElementById("pdfInput");
-
-// ---------- ESTADO ----------
-let caseData = "";
-let mostrarSoloFavoritos = false;
-
-// ======================================
-// CARGAR TEXTO
-// ======================================
-
-loadCaseBtn.addEventListener("click", () => {
-  const text = caseInput.value.trim();
-  if (!text) {
-    alert("Primero ingresa texto o carga un PDF.");
-    return;
-  }
-  caseData = text;
-  toolsSection.classList.remove("disabled");
-  output.textContent = "Texto cargado. Selecciona una herramienta.";
-});
-
-// ======================================
-// HERRAMIENTAS
-// ======================================
-
-document.querySelectorAll(".tools button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    ejecutarHerramienta(btn.dataset.action);
-  });
-});
-
-async function ejecutarHerramienta(tipo) {
-  const prompt = construirPrompt(tipo, caseData);
-  const resultado = await llamarOpenAI(prompt);
-
-  output.textContent = resultado;
-
-  guardarEnHistorial(
-    nombreHerramienta(tipo),
-    caseData,
-    resultado
-  );
-}
-
-// ======================================
-// PROMPTS
-// ======================================
-
-function construirPrompt(tipo, caso) {
-  switch (tipo) {
-    case "hechos":
-      return `Redacta los HECHOS de forma clara y cronológica.\n\nCASO:\n${caso}`;
-
-    case "tipicidad":
-      return `Analiza la TIPICIDAD PENAL conforme a la Ley 30096.\n\nCASO:\n${caso}`;
-
-    case "diligencias":
-      return `Propón DILIGENCIAS PRELIMINARES conforme al NCPP.\n\nCASO:\n${caso}`;
-
-    case "proveer":
-      return `Redacta una PROVIDENCIA FISCAL COMPLETA (Dado Cuenta breve, Considerando y Se Provee).\n\nDOCUMENTO:\n${caso}`;
-  }
-}
-
-// ======================================
-// OPENAI
-// ======================================
-
-async function llamarOpenAI(prompt) {
-  output.textContent = "⏳ Fizcal-IA esta pensando...";
-
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error.message);
-    return data.choices[0].message.content.trim();
-  } catch (e) {
-    return `❌ Error:\n${e.message}`;
-  }
-}
-
-// ======================================
-// HISTORIAL + FAVORITOS
-// ======================================
-
-const HISTORY_KEY = "asistente_penal_historial";
-
-function guardarEnHistorial(tipo, input, outputText) {
-  const historial = obtenerHistorial();
-  historial.unshift({
-    id: Date.now(),
-    tipo,
-    fecha: new Date().toLocaleString(),
-    input: input.slice(0, 200),
-    output: outputText,
-    favorite: false
-  });
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(historial));
-  renderizarHistorial();
-}
+/*************************************************
+ * HISTORIAL (UNA SOLA FUENTE DE VERDAD)
+ *************************************************/
 
 function obtenerHistorial() {
-  const data = localStorage.getItem(HISTORY_KEY);
-  return data ? JSON.parse(data) : [];
+  return JSON.parse(localStorage.getItem(HISTORIAL_KEY)) || [];
+}
+
+function guardarEnHistorial(item) {
+  const historial = obtenerHistorial();
+  historial.unshift(item);
+  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
 }
 
 function eliminarItemHistorial(id) {
   const historial = obtenerHistorial().filter(i => i.id !== id);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(historial));
+  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
   renderizarHistorial();
 }
 
-function toggleFavorito(id) {
+function borrarTodoHistorial() {
+  if (!confirm("¿Deseas borrar todo el historial? Esta acción no se puede deshacer.")) return;
+  localStorage.removeItem(HISTORIAL_KEY);
+  renderizarHistorial();
+}
+
+/*************************************************
+ * RENDER HISTORIAL
+ *************************************************/
+
+function renderizarHistorial(filtrarFavoritos = false) {
   const historial = obtenerHistorial();
-  const item = historial.find(i => i.id === id);
-  if (item) item.favorite = !item.favorite;
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(historial));
-  renderizarHistorial();
-}
-
-function renderizarHistorial() {
-  let historial = obtenerHistorial();
-
-  favCount.textContent = historial.filter(i => i.favorite).length;
-
-  historial.sort((a, b) => (a.favorite === b.favorite ? 0 : a.favorite ? -1 : 1));
-
-  if (mostrarSoloFavoritos) {
-    historial = historial.filter(i => i.favorite);
-  }
-
   historyList.innerHTML = "";
 
-  if (!historial.length) {
+  const items = filtrarFavoritos
+    ? historial.filter(i => i.favorite)
+    : historial;
+
+  if (!items.length) {
     historyList.innerHTML = `<li class="empty">No hay consultas guardadas.</li>`;
+    actualizarContador();
     return;
   }
 
-  historial.forEach(item => {
+  items.forEach(item => {
     const li = document.createElement("li");
     if (item.favorite) li.classList.add("favorito");
 
     li.innerHTML = `
       <div class="history-header">
         <strong>${item.tipo}</strong>
-        <div>
-          <button class="favorite-item">${item.favorite ? "⭐" : "☆"}</button>
-          <button class="delete-item">🗑️</button>
+        <div class="history-actions">
+          <span class="favorite-item">${item.favorite ? "⭐" : "☆"}</span>
+          <span class="delete-item">🗑️</span>
         </div>
       </div>
       <small>${item.fecha}</small>
-      <p>${item.input}...</p>
+      <p>${item.preview}</p>
     `;
 
-    li.addEventListener("click", () => output.textContent = item.output);
+    // Restaurar resultado
+    li.addEventListener("click", () => {
+      output.textContent = item.output;
+    });
+
+    // Favorito
     li.querySelector(".favorite-item").addEventListener("click", e => {
       e.stopPropagation();
-      toggleFavorito(item.id);
+      item.favorite = !item.favorite;
+      localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
+      renderizarHistorial(filtrarFavoritos);
     });
+
+    // Eliminar
     li.querySelector(".delete-item").addEventListener("click", e => {
       e.stopPropagation();
-      if (confirm("¿Eliminar esta consulta?")) eliminarItemHistorial(item.id);
+      eliminarItemHistorial(item.id);
     });
 
     historyList.appendChild(li);
   });
+
+  actualizarContador();
 }
 
-filterFavBtn.addEventListener("click", () => {
-  mostrarSoloFavoritos = !mostrarSoloFavoritos;
-  filterFavBtn.classList.toggle("active", mostrarSoloFavoritos);
-  renderizarHistorial();
-});
+function actualizarContador() {
+  const total = obtenerHistorial().filter(i => i.favorite).length;
+  document.getElementById("historyCount").textContent = total;
+}
 
-clearHistoryBtn.addEventListener("click", () => {
-  if (!confirm("⚠️ Se eliminará todo el historial. ¿Continuar?")) return;
-  localStorage.removeItem(HISTORY_KEY);
-  renderizarHistorial();
-});
+/*************************************************
+ * PROMPTS (VERSIÓN ESTABLE Y JURÍDICA)
+ *************************************************/
 
-// ======================================
-// PDF LIGERO
-// ======================================
+function construirPrompt(tipo, texto) {
+  const base = `
+Actúa como un fiscal penal peruano.
+Redacta con lenguaje técnico, sobrio y objetivo.
+No inventes hechos ni datos.
+No emitas juicios de responsabilidad definitiva.
+No reemplazas el criterio fiscal.
+`;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  if (tipo === "Hechos") {
+    return `
+${base}
+Redacta el apartado HECHOS de una disposición fiscal,
+en forma cronológica, numerada y objetiva,
+a partir del siguiente caso:
+
+${texto}
+`;
+  }
+
+  if (tipo === "Tipicidad") {
+    return `
+${base}
+Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR,
+citando expresamente artículos del Código Penal peruano
+y/o Ley 30096 si corresponde.
+Usa estructura: Consideraciones y Conclusión.
+
+Caso:
+${texto}
+`;
+  }
+
+  if (tipo === "Diligencias") {
+    return `
+${base}
+Propón DILIGENCIAS PRELIMINARES razonables,
+proporcionales y útiles,
+numeradas y redactadas en lenguaje fiscal.
+
+Caso:
+${texto}
+`;
+  }
+
+  if (tipo === "Proveer") {
+    return `
+${base}
+Redacta una PROVIDENCIA FISCAL simple
+con la siguiente estructura exacta:
+
+DADO CUENTA:
+El escrito que antecede;
+
+CONSIDERANDO:
+(Una sola consideración breve y formal)
+
+SE PROVEE:
+Téngase presente lo informado y agréguese a los actuados.
+
+No inventes datos.
+Caso / escrito:
+${texto}
+`;
+  }
+}
+
+/*************************************************
+ * LLAMADA A OPENAI
+ *************************************************/
+
+async function consultarIA(tipo) {
+  const texto = inputText.value.trim();
+  if (!texto) {
+    alert("Ingrese un caso o escrito.");
+    return;
+  }
+
+  output.textContent = "Procesando...";
+
+  const prompt = construirPrompt(tipo, texto);
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2
+      })
+    });
+
+    const data = await response.json();
+    const resultado = data.choices[0].message.content.trim();
+
+    output.textContent = resultado;
+
+    const item = {
+      id: Date.now(),
+      tipo,
+      fecha: new Date().toLocaleString(),
+      preview: resultado.slice(0, 120) + "...",
+      output: resultado,
+      favorite: false
+    };
+
+    guardarEnHistorial(item);
+    renderizarHistorial();
+
+  } catch (err) {
+    output.textContent = "Error al consultar la IA.";
+    console.error(err);
+  }
+}
+
+/*************************************************
+ * EVENTOS
+ *************************************************/
+
+document.getElementById("btnHechos").onclick = () => consultarIA("Hechos");
+document.getElementById("btnTipicidad").onclick = () => consultarIA("Tipicidad");
+document.getElementById("btnDiligencias").onclick = () => consultarIA("Diligencias");
+document.getElementById("btnProveer").onclick = () => consultarIA("Proveer");
+
+clearHistoryBtn.onclick = borrarTodoHistorial;
+
+favoritesBtn.onclick = () => renderizarHistorial(true);
+
+/*************************************************
+ * PDF (LIGERO)
+ *************************************************/
 
 pdfInput.addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  output.textContent = "⏳ Leyendo PDF…";
-
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-
-  let texto = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    texto += content.items.map(it => it.str).join(" ") + "\n\n";
-  }
-
-  caseInput.value = texto.trim();
-  caseData = texto.trim();
-  toolsSection.classList.remove("disabled");
-  output.textContent = "✅ PDF cargado correctamente.";
-  pdfInput.value = "";
+  const reader = new FileReader();
+  reader.onload = () => {
+    inputText.value = reader.result.slice(0, 8000);
+  };
+  reader.readAsText(file);
 });
 
-// ---------- INIT ----------
+/*************************************************
+ * INIT
+ *************************************************/
+
 renderizarHistorial();
-// ======================================
-// TEMA CLARO / OSCURO
-// ======================================
-
-const themeToggle = document.getElementById("themeToggle");
-const savedTheme = localStorage.getItem("theme") || "light";
-
-document.body.setAttribute("data-theme", savedTheme);
-themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
-
-themeToggle.addEventListener("click", () => {
-  const currentTheme = document.body.getAttribute("data-theme");
-  const newTheme = currentTheme === "dark" ? "light" : "dark";
-
-  document.body.setAttribute("data-theme", newTheme);
-  localStorage.setItem("theme", newTheme);
-  themeToggle.textContent = newTheme === "dark" ? "☀️" : "🌙";
-});

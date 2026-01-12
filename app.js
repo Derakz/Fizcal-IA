@@ -15,6 +15,9 @@ const historyList = document.getElementById("historyList");
 const pdfInput = document.getElementById("pdfInput");
 const themeToggle = document.getElementById("themeToggle");
 
+const sourcesBox = document.getElementById("sourcesBox");
+const sourcesList = document.getElementById("sourcesList");
+
 let mostrarSoloFavoritos = false;
 
 /*************************************************
@@ -22,58 +25,23 @@ let mostrarSoloFavoritos = false;
  *************************************************/
 
 let LEY_30096 = null;
-let CODIGO_PENAL = null;
-let NCPP = null;
 
 async function cargarNormas() {
-  try {
-    LEY_30096 = await fetch("ley30096.rag.json").then(r => r.json());
-    CODIGO_PENAL = await fetch("codigo_penal.rag.json").then(r => r.json());
-    NCPP = await fetch("ncpp.rag.json").then(r => r.json());
-  } catch (e) {
-    console.error("Error cargando normas:", e);
-    alert("Error cargando archivos normativos (JSON).");
-  }
+  LEY_30096 = await fetch("ley30096.rag.json").then(r => r.json());
 }
-
 cargarNormas();
 
 /*************************************************
- * RAG – DETECCIÓN MÚLTIPLE DE DELITOS
+ * RAG – DETECCIÓN DE DELITOS
  *************************************************/
 
 function detectarDelitos(texto) {
   const t = texto.toLowerCase();
   const delitos = new Set();
 
-  if (
-    t.includes("suplantación") ||
-    t.includes("suplantacion") ||
-    t.includes("se hizo pasar") ||
-    t.includes("uso de identidad")
-  ) {
-    delitos.add("SUPLANTACION");
-  }
-
-  if (
-    t.includes("fraude") ||
-    t.includes("phishing") ||
-    t.includes("transferencia") ||
-    t.includes("movimientos bancarios") ||
-    t.includes("página web falsa") ||
-    t.includes("pagina web falsa")
-  ) {
-    delitos.add("FRAUDE");
-  }
-
-  if (
-    t.includes("acceso no autorizado") ||
-    t.includes("accedió sin autorización") ||
-    t.includes("credenciales") ||
-    t.includes("clave")
-  ) {
-    delitos.add("ACCESO");
-  }
+  if (t.includes("suplantación") || t.includes("suplantacion")) delitos.add("SUPLANTACION");
+  if (t.includes("fraude") || t.includes("phishing") || t.includes("transferencia")) delitos.add("FRAUDE");
+  if (t.includes("acceso no autorizado") || t.includes("credenciales")) delitos.add("ACCESO");
 
   return Array.from(delitos);
 }
@@ -85,29 +53,19 @@ function detectarDelitos(texto) {
 function obtenerArticulosAutorizados(delitos) {
   if (!LEY_30096) return [];
 
-  const articulos = [];
+  const mapa = {
+    SUPLANTACION: 9,
+    FRAUDE: 8,
+    ACCESO: 2
+  };
 
-  delitos.forEach(delito => {
-    if (delito === "SUPLANTACION") {
-      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 9));
-    }
-    if (delito === "FRAUDE") {
-      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 8));
-    }
-    if (delito === "ACCESO") {
-      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 2));
-    }
-  });
-
-  return Array.from(
-    new Map(articulos.map(a => [a.numero, a])).values()
+  return LEY_30096.articulos.filter(a =>
+    delitos.some(d => a.numero === mapa[d])
   );
 }
 
 function construirBloqueNormativo(articulos) {
-  if (!articulos.length) {
-    return "NO SE IDENTIFICAN ARTÍCULOS APLICABLES EN LA BASE NORMATIVA.";
-  }
+  if (!articulos.length) return "NO HAY ARTÍCULOS AUTORIZADOS.";
 
   return articulos.map(a => `
 LEY 30096
@@ -117,7 +75,27 @@ ${a.texto}
 }
 
 /*************************************************
- * PROMPTS (RAG ESTRICTO)
+ * MOSTRAR FUENTES EN UI
+ *************************************************/
+
+function mostrarFuentes(articulos) {
+  if (!articulos.length) {
+    sourcesBox.style.display = "none";
+    return;
+  }
+
+  sourcesList.innerHTML = "";
+  sourcesBox.style.display = "block";
+
+  articulos.forEach(a => {
+    const li = document.createElement("li");
+    li.textContent = `Ley 30096 – Art. ${a.codigo}: ${a.titulo}`;
+    sourcesList.appendChild(li);
+  });
+}
+
+/*************************************************
+ * PROMPTS
  *************************************************/
 
 function construirPrompt(tipo, texto) {
@@ -125,10 +103,8 @@ function construirPrompt(tipo, texto) {
 Eres fiscal penal peruano.
 
 REGLAS ABSOLUTAS:
-- SOLO puedes citar artículos contenidos en el BLOQUE NORMATIVO.
-- Está PROHIBIDO usar conocimiento jurídico externo.
-- Si el artículo no está en el bloque, NO EXISTE.
-- NO inventes ni sustituyas artículos.
+- SOLO puedes usar los artículos del BLOQUE NORMATIVO.
+- NO inventes artículos.
 `;
 
   if (tipo === "Tipicidad") {
@@ -136,55 +112,32 @@ REGLAS ABSOLUTAS:
     const articulos = obtenerArticulosAutorizados(delitos);
     const bloque = construirBloqueNormativo(articulos);
 
+    // Guardamos las fuentes para mostrarlas luego
+    window.__ULTIMAS_FUENTES__ = articulos;
+
     return `${reglas}
 
 BLOQUE NORMATIVO AUTORIZADO:
 ${bloque}
 
 TAREA:
-Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR.
-Indica:
-- Delito(s) identificado(s)
-- Norma aplicable
-- Artículo(s) exacto(s)
-- Breve fundamentación
-
-NO cites nada fuera del bloque.
+Realiza análisis de tipicidad penal preliminar.
+Indica delito(s), norma y artículo exacto.
 
 CASO:
 ${texto}`;
   }
 
   if (tipo === "Hechos") {
-    return `${reglas}
-Redacta HECHOS de forma cronológica y numerada:
-
-${texto}`;
+    return `Redacta HECHOS cronológicos y numerados:\n${texto}`;
   }
 
   if (tipo === "Diligencias") {
-    return `${reglas}
-Propón DILIGENCIAS PRELIMINARES razonables y numeradas,
-conforme al Nuevo Código Procesal Penal:
-
-${texto}`;
+    return `Propón diligencias preliminares razonables:\n${texto}`;
   }
 
   if (tipo === "Proveer") {
-    return `${reglas}
-Redacta una PROVIDENCIA FISCAL con esta estructura obligatoria:
-
-DADO CUENTA:
-El escrito que antecede;
-
-CONSIDERANDO:
-(una consideración breve)
-
-SE PROVEE:
-Téngase presente lo informado y agréguese a los actuados.
-
-Texto base:
-${texto}`;
+    return `Redacta PROVIDENCIA FISCAL (DADO CUENTA / CONSIDERANDO / SE PROVEE):\n${texto}`;
   }
 }
 
@@ -197,123 +150,28 @@ async function consultarIA(tipo) {
   if (!texto) return alert("Ingrese texto o cargue un PDF.");
 
   output.textContent = "Procesando...";
+  sourcesBox.style.display = "none";
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("openai_key")}`
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages: [{ role: "user", content: construirPrompt(tipo, texto) }],
-        temperature: 0
-      })
-    });
-
-    const data = await response.json();
-    const resultado = data.choices[0].message.content.trim();
-
-    output.textContent = resultado;
-
-    guardarEnHistorial({
-      id: Date.now(),
-      tipo,
-      fecha: new Date().toLocaleString(),
-      preview: resultado.slice(0, 120) + "...",
-      output: resultado,
-      favorite: false
-    });
-
-    renderizarHistorial();
-
-  } catch (e) {
-    output.textContent = "Error al consultar la IA.";
-    console.error(e);
-  }
-}
-
-/*************************************************
- * HISTORIAL
- *************************************************/
-
-function obtenerHistorial() {
-  return JSON.parse(localStorage.getItem(HISTORIAL_KEY)) || [];
-}
-
-function guardarHistorial(historial) {
-  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
-}
-
-function guardarEnHistorial(item) {
-  const historial = obtenerHistorial();
-  historial.unshift(item);
-  guardarHistorial(historial);
-}
-
-function renderizarHistorial() {
-  const historial = obtenerHistorial();
-  const items = mostrarSoloFavoritos
-    ? historial.filter(i => i.favorite)
-    : historial;
-
-  historyList.innerHTML = "";
-
-  if (!items.length) {
-    historyList.innerHTML = `<li class="empty">No hay consultas guardadas.</li>`;
-    actualizarContador();
-    return;
-  }
-
-  items.forEach(item => {
-    const li = document.createElement("li");
-    if (item.favorite) li.classList.add("favorito");
-
-    li.innerHTML = `
-      <div class="history-header">
-        <strong>${item.tipo}</strong>
-        <div>
-          <span class="favorite-item">${item.favorite ? "⭐" : "☆"}</span>
-          <span class="delete-item">🗑️</span>
-        </div>
-      </div>
-      <small>${item.fecha}</small>
-      <p>${item.preview}</p>
-    `;
-
-    li.addEventListener("click", () => {
-      output.textContent = item.output;
-    });
-
-    li.querySelector(".favorite-item").addEventListener("click", e => {
-      e.stopPropagation();
-      item.favorite = !item.favorite;
-
-      const nuevoHistorial = obtenerHistorial()
-        .map(i => i.id === item.id ? item : i)
-        .sort((a, b) => b.favorite - a.favorite);
-
-      guardarHistorial(nuevoHistorial);
-      renderizarHistorial();
-    });
-
-    li.querySelector(".delete-item").addEventListener("click", e => {
-      e.stopPropagation();
-      guardarHistorial(obtenerHistorial().filter(i => i.id !== item.id));
-      renderizarHistorial();
-    });
-
-    historyList.appendChild(li);
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${localStorage.getItem("openai_key")}`
+    },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      messages: [{ role: "user", content: construirPrompt(tipo, texto) }],
+      temperature: 0
+    })
   });
 
-  actualizarContador();
-}
+  const data = await response.json();
+  const resultado = data.choices[0].message.content.trim();
 
-function actualizarContador() {
-  const el = document.getElementById("historyCount");
-  if (el) {
-    el.textContent = obtenerHistorial().filter(i => i.favorite).length;
+  output.textContent = resultado;
+
+  if (tipo === "Tipicidad") {
+    mostrarFuentes(window.__ULTIMAS_FUENTES__ || []);
   }
 }
 
@@ -326,39 +184,6 @@ document.getElementById("btnTipicidad").onclick = () => consultarIA("Tipicidad")
 document.getElementById("btnDiligencias").onclick = () => consultarIA("Diligencias");
 document.getElementById("btnProveer").onclick = () => consultarIA("Proveer");
 
-document.getElementById("filterFavoritesBtn").onclick = e => {
-  mostrarSoloFavoritos = !mostrarSoloFavoritos;
-  e.target.classList.toggle("active", mostrarSoloFavoritos);
-  renderizarHistorial();
-};
-
-document.getElementById("clearHistoryBtn").onclick = () => {
-  if (confirm("¿Borrar todo el historial?")) {
-    localStorage.removeItem(HISTORIAL_KEY);
-    renderizarHistorial();
-  }
-};
-
-/*************************************************
- * PDF.JS
- *************************************************/
-
-pdfInput.addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-  let texto = "";
-
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    texto += content.items.map(i => i.str).join(" ") + "\n\n";
-  }
-
-  inputText.value = texto.slice(0, 8000);
-});
-
 /*************************************************
  * TEMA OSCURO
  *************************************************/
@@ -367,17 +192,9 @@ const savedTheme = localStorage.getItem("theme") || "light";
 document.body.setAttribute("data-theme", savedTheme);
 themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
 
-themeToggle.addEventListener("click", () => {
-  const current = document.body.getAttribute("data-theme");
-  const next = current === "dark" ? "light" : "dark";
-
+themeToggle.onclick = () => {
+  const next = document.body.getAttribute("data-theme") === "dark" ? "light" : "dark";
   document.body.setAttribute("data-theme", next);
   localStorage.setItem("theme", next);
   themeToggle.textContent = next === "dark" ? "☀️" : "🌙";
-});
-
-/*************************************************
- * INIT
- *************************************************/
-
-renderizarHistorial();
+};

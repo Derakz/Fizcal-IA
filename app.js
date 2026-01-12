@@ -220,26 +220,49 @@ ${texto}`;
 
 async function consultarIA(tipo) {
   const texto = inputText.value.trim();
-  if (!texto) return alert("Ingrese texto o cargue un PDF.");
+  if (!texto) {
+    alert("Ingrese texto o cargue un PDF.");
+    return;
+  }
 
-  output.textContent = "🧠⏳Fizcal-IA está procesando...";
+  output.textContent = "🧠⏳ Fizcal-IA está procesando...";
+
+  const prompt = construirPrompt(tipo, texto);
 
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("openai_api_key")}`
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        messages: [{ role: "user", content: construirPrompt(tipo, texto) }],
-        temperature: 0
+        input: prompt
       })
     });
 
     const data = await response.json();
-    const resultado = data.choices[0].message.content.trim();
+
+    // 🔴 MANEJO DE ERROR REAL
+    if (!response.ok) {
+      console.error("OpenAI error:", data);
+      output.textContent =
+        "❌ Error al consultar la IA.\n\n" +
+        (data.error?.message || "Solicitud inválida a OpenAI.");
+      return;
+    }
+
+    // ✅ LECTURA CORRECTA DE RESPUESTA
+    const resultado =
+      data.output_text ||
+      data.output?.[0]?.content?.[0]?.text;
+
+    if (!resultado) {
+      console.error("Respuesta inesperada:", data);
+      output.textContent = "❌ Respuesta vacía de la IA.";
+      return;
+    }
 
     output.textContent = resultado;
 
@@ -255,8 +278,8 @@ async function consultarIA(tipo) {
     renderizarHistorial();
 
   } catch (e) {
-    output.textContent = "Error al consultar la IA.";
     console.error(e);
+    output.textContent = "❌ Error de conexión con OpenAI.";
   }
 }
 

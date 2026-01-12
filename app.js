@@ -137,8 +137,14 @@ ${texto}`;
 
   if (tipo === "Tipicidad") {
     return `${base}
-Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR,
-citando Código Penal y/o Ley 30096.
+Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR.
+
+REGLAS OBLIGATORIAS:
+1. Identifica primero si el hecho encaja en un delito regulado en la Ley N.º 30096.
+2. Si el delito está regulado en dicha ley, cita EXCLUSIVAMENTE esa norma.
+3. Indica el ARTÍCULO EXACTO (número y denominación).
+4. TIENES PROHIBIDO inventar o aproximar artículos.
+5. Si no puedes determinar el artículo con certeza, indícalo expresamente y no improvises.
 
 Caso:
 ${texto}`;
@@ -235,6 +241,11 @@ safeBind("btnProveer", () => consultarIA("Proveer"));
 
 safeBind("clearHistoryBtn", borrarTodoHistorial);
 safeBind("filterFavoritesBtn", () => renderizarHistorial(true));
+
+safeBind("loadCaseBtn", () => {
+  inputText.value = "";
+  output.textContent = "";
+});
 
 /*************************************************
  * PDF.JS

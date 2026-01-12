@@ -36,8 +36,17 @@
       placeholder="Pegue aquí el caso fiscal, escrito o cargue un PDF..."
     ></textarea>
 
-    <div class="file-row">
-      <input type="file" id="pdfInput" accept="application/pdf" />
+    <div class="pdf-upload">
+      <label class="pdf-label">📄 Documento:</label>
+
+      <label class="pdf-button">
+        Subir PDF
+        <input type="file" id="pdfInput" accept="application/pdf" hidden />
+      </label>
+
+      <button id="loadCaseBtn" class="pdf-button">
+        📂 Cargar caso
+      </button>
     </div>
   </section>
 

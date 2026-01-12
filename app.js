@@ -196,7 +196,7 @@ async function consultarIA(tipo) {
   const texto = inputText.value.trim();
   if (!texto) return alert("Ingrese texto o cargue un PDF.");
 
-  output.textContent = "Procesando...";
+  output.textContent = "🧠⏳Fizcal-IA está procesando...";
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {

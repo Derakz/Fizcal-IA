@@ -1,175 +1,178 @@
 /*************************************************
- * CONFIG
+ * CONFIGURACIÓN GENERAL
  *************************************************/
 
 const OPENAI_MODEL = "gpt-4.1-mini";
 const HISTORIAL_KEY = "transactions";
 
 /*************************************************
- * ELEMENTOS
+ * ELEMENTOS DOM
  *************************************************/
 
 const inputText = document.getElementById("caseInput");
 const output = document.getElementById("output");
 const historyList = document.getElementById("historyList");
 const pdfInput = document.getElementById("pdfInput");
+const themeToggle = document.getElementById("themeToggle");
+
+let mostrarSoloFavoritos = false;
 
 /*************************************************
- * API KEY
+ * CARGA DE NORMAS (JSON RAG)
  *************************************************/
 
-let OPENAI_API_KEY = localStorage.getItem("openai_key");
+let LEY_30096 = null;
+let CODIGO_PENAL = null;
+let NCPP = null;
 
-if (!OPENAI_API_KEY) {
-  OPENAI_API_KEY = prompt("🔐 Ingresa tu API Key de OpenAI:");
-  if (OPENAI_API_KEY) {
-    localStorage.setItem("openai_key", OPENAI_API_KEY.trim());
+async function cargarNormas() {
+  try {
+    LEY_30096 = await fetch("ley30096.rag.json").then(r => r.json());
+    CODIGO_PENAL = await fetch("codigo_penal.rag.json").then(r => r.json());
+    NCPP = await fetch("ncpp.rag.json").then(r => r.json());
+  } catch (e) {
+    console.error("Error cargando normas:", e);
+    alert("Error cargando archivos normativos (JSON).");
   }
 }
 
-/*************************************************
- * UTILIDADES UX
- *************************************************/
-
-function setButtonsDisabled(state) {
-  document.querySelectorAll(".tool-btn").forEach(btn => {
-    btn.disabled = state;
-  });
-}
-
-function safeBind(id, handler) {
-  const el = document.getElementById(id);
-  if (el) el.addEventListener("click", handler);
-}
+cargarNormas();
 
 /*************************************************
- * HISTORIAL
+ * RAG – DETECCIÓN MÚLTIPLE DE DELITOS
  *************************************************/
 
-function obtenerHistorial() {
-  return JSON.parse(localStorage.getItem(HISTORIAL_KEY)) || [];
-}
+function detectarDelitos(texto) {
+  const t = texto.toLowerCase();
+  const delitos = new Set();
 
-function guardarEnHistorial(item) {
-  const historial = obtenerHistorial();
-  historial.unshift(item);
-  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
-}
-
-function eliminarItem(id) {
-  const historial = obtenerHistorial().filter(i => i.id !== id);
-  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
-  renderizarHistorial();
-}
-
-function borrarTodoHistorial() {
-  if (!confirm("¿Borrar todo el historial?")) return;
-  localStorage.removeItem(HISTORIAL_KEY);
-  renderizarHistorial();
-}
-
-/*************************************************
- * RENDER HISTORIAL
- *************************************************/
-
-function renderizarHistorial(soloFavoritos = false) {
-  const historial = obtenerHistorial();
-  historyList.innerHTML = "";
-
-  const items = soloFavoritos ? historial.filter(i => i.favorite) : historial;
-
-  if (!items.length) {
-    historyList.innerHTML = `<li class="empty">No hay consultas guardadas.</li>`;
-    actualizarContador();
-    return;
+  if (
+    t.includes("suplantación") ||
+    t.includes("suplantacion") ||
+    t.includes("se hizo pasar") ||
+    t.includes("uso de identidad")
+  ) {
+    delitos.add("SUPLANTACION");
   }
 
-  items.forEach(item => {
-    const li = document.createElement("li");
-    if (item.favorite) li.classList.add("favorito");
+  if (
+    t.includes("fraude") ||
+    t.includes("phishing") ||
+    t.includes("transferencia") ||
+    t.includes("movimientos bancarios") ||
+    t.includes("página web falsa") ||
+    t.includes("pagina web falsa")
+  ) {
+    delitos.add("FRAUDE");
+  }
 
-    li.innerHTML = `
-      <div class="history-header">
-        <div>
-          <span class="badge">${item.tipo}</span>
-          <strong>${item.tipo}</strong>
-        </div>
-        <div>
-          <span class="favorite-item">${item.favorite ? "⭐" : "☆"}</span>
-          <span class="delete-item">🗑️</span>
-        </div>
-      </div>
-      <small>${item.fecha}</small>
-      <p>${item.preview}</p>
-    `;
+  if (
+    t.includes("acceso no autorizado") ||
+    t.includes("accedió sin autorización") ||
+    t.includes("credenciales") ||
+    t.includes("clave")
+  ) {
+    delitos.add("ACCESO");
+  }
 
-    li.addEventListener("click", () => {
-      output.textContent = item.output;
-    });
-
-    li.querySelector(".favorite-item").onclick = e => {
-      e.stopPropagation();
-      item.favorite = !item.favorite;
-      localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
-      renderizarHistorial(soloFavoritos);
-    };
-
-    li.querySelector(".delete-item").onclick = e => {
-      e.stopPropagation();
-      eliminarItem(item.id);
-    };
-
-    historyList.appendChild(li);
-  });
-
-  actualizarContador();
-}
-
-function actualizarContador() {
-  const el = document.getElementById("historyCount");
-  if (!el) return;
-  el.textContent = obtenerHistorial().filter(i => i.favorite).length;
+  return Array.from(delitos);
 }
 
 /*************************************************
- * PROMPTS
+ * RAG – ARTÍCULOS AUTORIZADOS
+ *************************************************/
+
+function obtenerArticulosAutorizados(delitos) {
+  if (!LEY_30096) return [];
+
+  const articulos = [];
+
+  delitos.forEach(delito => {
+    if (delito === "SUPLANTACION") {
+      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 9));
+    }
+    if (delito === "FRAUDE") {
+      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 8));
+    }
+    if (delito === "ACCESO") {
+      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 2));
+    }
+  });
+
+  return Array.from(
+    new Map(articulos.map(a => [a.numero, a])).values()
+  );
+}
+
+function construirBloqueNormativo(articulos) {
+  if (!articulos.length) {
+    return "NO SE IDENTIFICAN ARTÍCULOS APLICABLES EN LA BASE NORMATIVA.";
+  }
+
+  return articulos.map(a => `
+LEY 30096
+ARTÍCULO ${a.codigo} – ${a.titulo}
+${a.texto}
+`).join("\n");
+}
+
+/*************************************************
+ * PROMPTS (RAG ESTRICTO)
  *************************************************/
 
 function construirPrompt(tipo, texto) {
-  const base = `
-Actúa como fiscal penal peruano.
-Lenguaje técnico, sobrio y objetivo.
-No inventes hechos ni datos.
-No emitas juicios definitivos.
+  const reglas = `
+Eres fiscal penal peruano.
+
+REGLAS ABSOLUTAS:
+- SOLO puedes citar artículos contenidos en el BLOQUE NORMATIVO.
+- Está PROHIBIDO usar conocimiento jurídico externo.
+- Si el artículo no está en el bloque, NO EXISTE.
+- NO inventes ni sustituyas artículos.
 `;
 
-  if (tipo === "Hechos") {
-    return `${base}
-Redacta el apartado HECHOS de forma cronológica y numerada:
+  if (tipo === "Tipicidad") {
+    const delitos = detectarDelitos(texto);
+    const articulos = obtenerArticulosAutorizados(delitos);
+    const bloque = construirBloqueNormativo(articulos);
 
+    return `${reglas}
+
+BLOQUE NORMATIVO AUTORIZADO:
+${bloque}
+
+TAREA:
+Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR.
+Indica:
+- Delito(s) identificado(s)
+- Norma aplicable
+- Artículo(s) exacto(s)
+- Breve fundamentación
+
+NO cites nada fuera del bloque.
+
+CASO:
 ${texto}`;
   }
 
-  if (tipo === "Tipicidad") {
-    return `${base}
-Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR,
-citando Código Penal y/o Ley 30096 cuando corresponda.
+  if (tipo === "Hechos") {
+    return `${reglas}
+Redacta HECHOS de forma cronológica y numerada:
 
-Caso:
 ${texto}`;
   }
 
   if (tipo === "Diligencias") {
-    return `${base}
-Propón DILIGENCIAS PRELIMINARES numeradas y razonables.
+    return `${reglas}
+Propón DILIGENCIAS PRELIMINARES razonables y numeradas,
+conforme al Nuevo Código Procesal Penal:
 
-Caso:
 ${texto}`;
   }
 
   if (tipo === "Proveer") {
-    return `${base}
-Redacta una PROVIDENCIA FISCAL con esta estructura exacta:
+    return `${reglas}
+Redacta una PROVIDENCIA FISCAL con esta estructura obligatoria:
 
 DADO CUENTA:
 El escrito que antecede;
@@ -180,7 +183,7 @@ CONSIDERANDO:
 SE PROVEE:
 Téngase presente lo informado y agréguese a los actuados.
 
-Texto:
+Texto base:
 ${texto}`;
   }
 }
@@ -193,22 +196,19 @@ async function consultarIA(tipo) {
   const texto = inputText.value.trim();
   if (!texto) return alert("Ingrese texto o cargue un PDF.");
 
-  const loader = document.getElementById("loadingIndicator");
-  if (loader) loader.classList.remove("hidden");
-  setButtonsDisabled(true);
-  output.textContent = "";
+  output.textContent = "Procesando...";
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${localStorage.getItem("openai_key")}`
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
         messages: [{ role: "user", content: construirPrompt(tipo, texto) }],
-        temperature: 0.2
+        temperature: 0
       })
     });
 
@@ -231,11 +231,113 @@ async function consultarIA(tipo) {
   } catch (e) {
     output.textContent = "Error al consultar la IA.";
     console.error(e);
-  } finally {
-    setButtonsDisabled(false);
-    if (loader) loader.classList.add("hidden");
   }
 }
+
+/*************************************************
+ * HISTORIAL
+ *************************************************/
+
+function obtenerHistorial() {
+  return JSON.parse(localStorage.getItem(HISTORIAL_KEY)) || [];
+}
+
+function guardarHistorial(historial) {
+  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
+}
+
+function guardarEnHistorial(item) {
+  const historial = obtenerHistorial();
+  historial.unshift(item);
+  guardarHistorial(historial);
+}
+
+function renderizarHistorial() {
+  const historial = obtenerHistorial();
+  const items = mostrarSoloFavoritos
+    ? historial.filter(i => i.favorite)
+    : historial;
+
+  historyList.innerHTML = "";
+
+  if (!items.length) {
+    historyList.innerHTML = `<li class="empty">No hay consultas guardadas.</li>`;
+    actualizarContador();
+    return;
+  }
+
+  items.forEach(item => {
+    const li = document.createElement("li");
+    if (item.favorite) li.classList.add("favorito");
+
+    li.innerHTML = `
+      <div class="history-header">
+        <strong>${item.tipo}</strong>
+        <div>
+          <span class="favorite-item">${item.favorite ? "⭐" : "☆"}</span>
+          <span class="delete-item">🗑️</span>
+        </div>
+      </div>
+      <small>${item.fecha}</small>
+      <p>${item.preview}</p>
+    `;
+
+    li.addEventListener("click", () => {
+      output.textContent = item.output;
+    });
+
+    li.querySelector(".favorite-item").addEventListener("click", e => {
+      e.stopPropagation();
+      item.favorite = !item.favorite;
+
+      const nuevoHistorial = obtenerHistorial()
+        .map(i => i.id === item.id ? item : i)
+        .sort((a, b) => b.favorite - a.favorite);
+
+      guardarHistorial(nuevoHistorial);
+      renderizarHistorial();
+    });
+
+    li.querySelector(".delete-item").addEventListener("click", e => {
+      e.stopPropagation();
+      guardarHistorial(obtenerHistorial().filter(i => i.id !== item.id));
+      renderizarHistorial();
+    });
+
+    historyList.appendChild(li);
+  });
+
+  actualizarContador();
+}
+
+function actualizarContador() {
+  const el = document.getElementById("historyCount");
+  if (el) {
+    el.textContent = obtenerHistorial().filter(i => i.favorite).length;
+  }
+}
+
+/*************************************************
+ * BINDS
+ *************************************************/
+
+document.getElementById("btnHechos").onclick = () => consultarIA("Hechos");
+document.getElementById("btnTipicidad").onclick = () => consultarIA("Tipicidad");
+document.getElementById("btnDiligencias").onclick = () => consultarIA("Diligencias");
+document.getElementById("btnProveer").onclick = () => consultarIA("Proveer");
+
+document.getElementById("filterFavoritesBtn").onclick = e => {
+  mostrarSoloFavoritos = !mostrarSoloFavoritos;
+  e.target.classList.toggle("active", mostrarSoloFavoritos);
+  renderizarHistorial();
+};
+
+document.getElementById("clearHistoryBtn").onclick = () => {
+  if (confirm("¿Borrar todo el historial?")) {
+    localStorage.removeItem(HISTORIAL_KEY);
+    renderizarHistorial();
+  }
+};
 
 /*************************************************
  * PDF.JS
@@ -245,10 +347,9 @@ pdfInput.addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
   let texto = "";
+
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
@@ -262,29 +363,21 @@ pdfInput.addEventListener("change", async e => {
  * TEMA OSCURO
  *************************************************/
 
-const themeToggle = document.getElementById("themeToggle");
 const savedTheme = localStorage.getItem("theme") || "light";
 document.body.setAttribute("data-theme", savedTheme);
 themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
 
-themeToggle.onclick = () => {
-  const newTheme =
-    document.body.getAttribute("data-theme") === "dark" ? "light" : "dark";
-  document.body.setAttribute("data-theme", newTheme);
-  localStorage.setItem("theme", newTheme);
-  themeToggle.textContent = newTheme === "dark" ? "☀️" : "🌙";
-};
+themeToggle.addEventListener("click", () => {
+  const current = document.body.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  themeToggle.textContent = next === "dark" ? "☀️" : "🌙";
+});
 
 /*************************************************
- * BINDS + INIT
+ * INIT
  *************************************************/
-
-safeBind("btnHechos", () => consultarIA("Hechos"));
-safeBind("btnTipicidad", () => consultarIA("Tipicidad"));
-safeBind("btnDiligencias", () => consultarIA("Diligencias"));
-safeBind("btnProveer", () => consultarIA("Proveer"));
-
-safeBind("clearHistoryBtn", borrarTodoHistorial);
-safeBind("filterFavoritesBtn", () => renderizarHistorial(true));
 
 renderizarHistorial();

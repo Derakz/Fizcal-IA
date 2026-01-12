@@ -13,6 +13,7 @@ const inputText = document.getElementById("caseInput");
 const output = document.getElementById("output");
 const historyList = document.getElementById("historyList");
 const pdfInput = document.getElementById("pdfInput");
+const themeToggle = document.getElementById("themeToggle");
 
 let mostrarSoloFavoritos = false;
 
@@ -31,18 +32,19 @@ async function cargarNormas() {
     NCPP = await fetch("ncpp.rag.json").then(r => r.json());
   } catch (e) {
     console.error("Error cargando normas:", e);
-    alert("Error cargando archivos normativos (JSON RAG).");
+    alert("Error cargando archivos normativos (JSON).");
   }
 }
 
 cargarNormas();
 
 /*************************************************
- * RAG – DETECCIÓN DE DELITO
+ * RAG – DETECCIÓN MÚLTIPLE DE DELITOS
  *************************************************/
 
-function detectarDelito(texto) {
+function detectarDelitos(texto) {
   const t = texto.toLowerCase();
+  const delitos = new Set();
 
   if (
     t.includes("suplantación") ||
@@ -50,57 +52,65 @@ function detectarDelito(texto) {
     t.includes("se hizo pasar") ||
     t.includes("uso de identidad")
   ) {
-    return "SUPLANTACION";
+    delitos.add("SUPLANTACION");
   }
 
   if (
-    t.includes("transferencia") ||
+    t.includes("fraude") ||
     t.includes("phishing") ||
+    t.includes("transferencia") ||
     t.includes("movimientos bancarios") ||
-    t.includes("fraude")
+    t.includes("página web falsa") ||
+    t.includes("pagina web falsa")
   ) {
-    return "FRAUDE";
+    delitos.add("FRAUDE");
   }
 
   if (
     t.includes("acceso no autorizado") ||
-    t.includes("accedió sin autorización")
+    t.includes("accedió sin autorización") ||
+    t.includes("credenciales") ||
+    t.includes("clave")
   ) {
-    return "ACCESO";
+    delitos.add("ACCESO");
   }
 
-  return null;
+  return Array.from(delitos);
 }
 
 /*************************************************
- * RAG – OBTENER ARTÍCULOS AUTORIZADOS
+ * RAG – ARTÍCULOS AUTORIZADOS
  *************************************************/
 
-function obtenerArticulosAutorizados(delito) {
+function obtenerArticulosAutorizados(delitos) {
   if (!LEY_30096) return [];
 
-  if (delito === "SUPLANTACION") {
-    return LEY_30096.articulos.filter(a => a.numero === 9);
-  }
+  const articulos = [];
 
-  if (delito === "FRAUDE") {
-    return LEY_30096.articulos.filter(a => a.numero === 8);
-  }
+  delitos.forEach(delito => {
+    if (delito === "SUPLANTACION") {
+      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 9));
+    }
+    if (delito === "FRAUDE") {
+      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 8));
+    }
+    if (delito === "ACCESO") {
+      articulos.push(...LEY_30096.articulos.filter(a => a.numero === 2));
+    }
+  });
 
-  if (delito === "ACCESO") {
-    return LEY_30096.articulos.filter(a => a.numero === 2);
-  }
-
-  return [];
+  return Array.from(
+    new Map(articulos.map(a => [a.numero, a])).values()
+  );
 }
 
-function construirBloqueNormativo(articulos, norma) {
+function construirBloqueNormativo(articulos) {
   if (!articulos.length) {
-    return "NO EXISTEN ARTÍCULOS AUTORIZADOS PARA ESTE CASO.";
+    return "NO SE IDENTIFICAN ARTÍCULOS APLICABLES EN LA BASE NORMATIVA.";
   }
 
   return articulos.map(a => `
-${norma}
+LEY 30096
 ARTÍCULO ${a.codigo} – ${a.titulo}
 ${a.texto}
 `).join("\n");
@@ -111,26 +121,22 @@ ${a.texto}
  *************************************************/
 
 function construirPrompt(tipo, texto) {
-  const reglasBase = `
+  const reglas = `
 Eres fiscal penal peruano.
 
 REGLAS ABSOLUTAS:
 - SOLO puedes citar artículos contenidos en el BLOQUE NORMATIVO.
 - Está PROHIBIDO usar conocimiento jurídico externo.
 - Si el artículo no está en el bloque, NO EXISTE.
-- NO inventes, NO relaciones, NO infieras artículos.
-- Si no hay tipicidad clara, indícalo expresamente.
+- NO inventes ni sustituyas artículos.
 `;
 
   if (tipo === "Tipicidad") {
-    const delito = detectarDelito(texto);
-    const articulos = obtenerArticulosAutorizados(delito);
-    const bloque = construirBloqueNormativo(
-      articulos,
-      LEY_30096?.norma || "LEY 30096"
-    );
+    const delitos = detectarDelitos(texto);
+    const articulos = obtenerArticulosAutorizados(delitos);
+    const bloque = construirBloqueNormativo(articulos);
 
-    return `${reglasBase}
+    return `${reglas}
 
 BLOQUE NORMATIVO AUTORIZADO:
 ${bloque}
@@ -138,10 +144,10 @@ ${bloque}
 TAREA:
 Realiza un ANÁLISIS DE TIPICIDAD PENAL PRELIMINAR.
 Indica:
-- Delito
+- Delito(s) identificado(s)
 - Norma aplicable
-- Artículo exacto
-- Fundamentación breve
+- Artículo(s) exacto(s)
+- Breve fundamentación
 
 NO cites nada fuera del bloque.
 
@@ -150,14 +156,14 @@ ${texto}`;
   }
 
   if (tipo === "Hechos") {
-    return `${reglasBase}
-Redacta HECHOS de manera cronológica y numerada:
+    return `${reglas}
+Redacta HECHOS de forma cronológica y numerada:
 
 ${texto}`;
   }
 
   if (tipo === "Diligencias") {
-    return `${reglasBase}
+    return `${reglas}
 Propón DILIGENCIAS PRELIMINARES razonables y numeradas,
 conforme al Nuevo Código Procesal Penal:
 
@@ -165,8 +171,8 @@ ${texto}`;
   }
 
   if (tipo === "Proveer") {
-    return `${reglasBase}
-Redacta una PROVIDENCIA FISCAL con la siguiente estructura obligatoria:
+    return `${reglas}
+Redacta una PROVIDENCIA FISCAL con esta estructura obligatoria:
 
 DADO CUENTA:
 El escrito que antecede;
@@ -188,10 +194,7 @@ ${texto}`;
 
 async function consultarIA(tipo) {
   const texto = inputText.value.trim();
-  if (!texto) {
-    alert("Ingrese texto o cargue un PDF.");
-    return;
-  }
+  if (!texto) return alert("Ingrese texto o cargue un PDF.");
 
   output.textContent = "Procesando...";
 
@@ -309,8 +312,9 @@ function renderizarHistorial() {
 
 function actualizarContador() {
   const el = document.getElementById("historyCount");
-  if (!el) return;
-  el.textContent = obtenerHistorial().filter(i => i.favorite).length;
+  if (el) {
+    el.textContent = obtenerHistorial().filter(i => i.favorite).length;
+  }
 }
 
 /*************************************************
@@ -353,6 +357,23 @@ pdfInput.addEventListener("change", async e => {
   }
 
   inputText.value = texto.slice(0, 8000);
+});
+
+/*************************************************
+ * TEMA OSCURO
+ *************************************************/
+
+const savedTheme = localStorage.getItem("theme") || "light";
+document.body.setAttribute("data-theme", savedTheme);
+themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+themeToggle.addEventListener("click", () => {
+  const current = document.body.getAttribute("data-theme");
+  const next = current === "dark" ? "light" : "dark";
+
+  document.body.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  themeToggle.textContent = next === "dark" ? "☀️" : "🌙";
 });
 
 /*************************************************

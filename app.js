@@ -247,7 +247,7 @@ function safeBind(id, handler) {
   if (el) el.addEventListener("click", handler);
 }
 
-// Botones principales
+// Botones de herramientas
 safeBind("btnHechos", () => consultarIA("Hechos"));
 safeBind("btnTipicidad", () => consultarIA("Tipicidad"));
 safeBind("btnDiligencias", () => consultarIA("Diligencias"));
@@ -256,10 +256,6 @@ safeBind("btnProveer", () => consultarIA("Proveer"));
 // Historial
 safeBind("clearHistoryBtn", borrarTodoHistorial);
 safeBind("filterFavoritesBtn", () => renderizarHistorial(true));
-
-clearHistoryBtn.onclick = borrarTodoHistorial;
-
-favoritesBtn.onclick = () => renderizarHistorial(true);
 
 /*************************************************
  * PDF (LIGERO)

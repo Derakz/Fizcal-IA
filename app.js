@@ -242,7 +242,10 @@ async function consultarIA(tipo) {
           {
             role: "user",
             content: [
-              { type: "text", text: prompt }
+              {
+                type: "input_text",
+                text: prompt
+              }
             ]
           }
         ]
@@ -251,7 +254,6 @@ async function consultarIA(tipo) {
 
     const data = await response.json();
 
-    // 🚨 Manejo de error real
     if (!response.ok) {
       console.error("OpenAI error:", data);
       output.textContent =
@@ -260,7 +262,6 @@ async function consultarIA(tipo) {
       return;
     }
 
-    // ✅ Extracción segura del texto
     const resultado =
       data.output_text ||
       data.output?.[0]?.content?.[0]?.text;
